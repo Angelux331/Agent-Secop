@@ -14,8 +14,10 @@ CONFIG_DIR = BASE_DIR / "config"
 for d in (DATA_DIR, REPORTS_DIR, LOGS_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
-XAI_API_KEY = os.getenv("XAI_API_KEY", "")
-GROK_MODEL = os.getenv("GROK_MODEL", "grok-2-mini")
+XAI_API_KEY = os.getenv("XAI_API_KEY", "").strip()
+XAI_BASE_URL = os.getenv("XAI_BASE_URL", "https://api.reto.pltk.mx/v1").strip().rstrip("/")
+GROK_MODEL = os.getenv("GROK_MODEL", "grok-2-mini").strip()
+
 SECOP_DOMAIN = os.getenv("SECOP_DOMAIN", "www.datos.gov.co")
 SECOP_DATASET_ID = os.getenv("SECOP_DATASET_ID", "p6dx-8zbt")
 SECOP_APP_TOKEN = os.getenv("SECOP_APP_TOKEN", "")

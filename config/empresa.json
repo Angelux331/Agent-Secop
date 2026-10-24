@@ -1,27 +1,37 @@
 {
   "nombre": "Mi Empresa SAS",
-  "nit": "900000000-1",
-  "sectores": ["tecnología", "software", "servicios de TI", "consultoría"],
-  "unspsc_aproximados": ["43230000", "81110000", "80101500"],
+  "sectores": ["tecnología", "software", "servicios de TI", "consultoría", "datos"],
   "keywords_positivas": [
-    "desarrollo de software",
-    "implementación de sistemas",
-    "soporte tecnológico",
-    "nube",
     "datos",
-    "inteligencia artificial"
+    "software",
+    "sistema",
+    "información",
+    "tecnolog",
+    "digital",
+    "desarrollo",
+    "soporte",
+    "consultor",
+    "nube",
+    "plataforma",
+    "aplicacion",
+    "aplicación",
+    "TI",
+    "TIC"
   ],
   "keywords_negativas": [
     "obra civil",
     "construcción de vías",
+    "paviment",
     "dotación hospitalaria",
-    "armamento"
+    "armamento",
+    "medicamento",
+    "vigilancia armada"
   ],
   "ubicaciones_preferidas": ["Bogotá", "Cundinamarca", "nacional", "Colombia"],
-  "valor_min_cop": 20000000,
-  "valor_max_cop": 5000000000,
+  "valor_min_cop": null,
+  "valor_max_cop": null,
   "experiencia_anios": 5,
-  "certificaciones": ["ISO 9001", "ISO 27001"],
+  "certificaciones": ["ISO 9001"],
   "capacidad_personal": 25,
-  "notas": "Preferimos contratos de servicios profesionales y suministro de software. No participamos en obras pesadas."
+  "notas": "Servicios profesionales TI, datos y software. Evitar obras pesadas."
 }

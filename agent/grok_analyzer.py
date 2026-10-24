@@ -7,26 +7,34 @@ from typing import Any
 
 from openai import OpenAI, AuthenticationError, BadRequestError, APIError
 
-from agent.config import GROK_MODEL, XAI_API_KEY
+from agent.config import GROK_MODEL, XAI_API_KEY, XAI_BASE_URL
 
 logger = logging.getLogger(__name__)
 
 _client = None
-_auth_failed = False  # evita 25 llamadas inútiles
+_auth_failed = False
 
 def get_client() -> OpenAI:
     global _client
     if _client is None:
         key = (XAI_API_KEY or "").strip()
+        base = (XAI_BASE_URL or "").strip().rstrip("/")
         if not key:
             raise RuntimeError(
-                "XAI_API_KEY vacía. Configúrala en el archivo .env (sin comillas)."
+                "XAI_API_KEY vacía. Pon tu key pk_... en el archivo .env (sin comillas)."
             )
-        if key.lower().startswith("xai-tu") or "pega_aqui" in key.lower() or "your_" in key.lower():
+        if not base:
             raise RuntimeError(
-                "XAI_API_KEY parece un placeholder. Pega la key real de https://console.x.ai"
+                "XAI_BASE_URL vacía. Ejemplo: https://api.reto.pltk.mx/v1"
             )
-        _client = OpenAI(api_key=key, base_url="https://api.x.ai/v1")
+        # placeholders obvios
+        low = key.lower()
+        if low.startswith("pk_tu") or "pega_aqui" in low or "your_" in low:
+            raise RuntimeError("XAI_API_KEY parece un placeholder. Pega tu pk_ real.")
+
+        _client = OpenAI(api_key=key, base_url=base)
+        logger.info("Cliente IA → base_url=%s model=%s key_prefix=%s...",
+                    base, GROK_MODEL, key[:6])
     return _client
 
 SYSTEM_PROMPT = """Eres un analista experto en contratación pública colombiana (SECOP II).
@@ -67,8 +75,8 @@ def analyze_proceso(proceso: dict, empresa: dict) -> dict:
 
     if _auth_failed:
         base["error"] = "auth_failed"
-        base["motivo_score"] = "API key inválida (se detuvo el lote)"
-        base["riesgos"] = ["No se llamó a Grok por error de autenticación previo"]
+        base["motivo_score"] = "API key/URL inválida (lote detenido)"
+        base["riesgos"] = ["No se llamó a la IA por error de autenticación previo"]
         return base
 
     user_prompt = f"""
@@ -112,27 +120,39 @@ Si falta info de pliego completo, indica documentos típicos SECOP II (jurídico
         data = _extract_json(content)
     except (AuthenticationError, BadRequestError) as e:
         msg = str(e)
-        if "Incorrect API key" in msg or "invalid" in msg.lower() or "401" in msg or "400" in msg:
+        # Detener el lote solo en auth / key mala
+        if any(s in msg.lower() for s in (
+            "incorrect api key", "invalid api key", "unauthorized",
+            "authentication", "invalid-argument", "401", "403"
+        )):
             _auth_failed = True
             logger.error(
-                "Fallo de autenticación Grok/xAI. Revisa XAI_API_KEY en .env "
-                "(console.x.ai). No se harán más llamadas en este run. Detalle: %s",
+                "Auth/config IA falló. Revisa XAI_API_KEY (pk_...) y "
+                "XAI_BASE_URL (https://api.reto.pltk.mx/v1). Detalle: %s",
                 msg,
             )
         else:
-            logger.error("BadRequest Grok: %s", msg)
+            # p.ej. modelo incorrecto: no marques toda la key como muerta sí o sí
+            logger.error("BadRequest IA: %s", msg)
+            if "model" in msg.lower():
+                base["error"] = "bad_model"
+                base["motivo_score"] = msg
+                base["riesgos"] = [f"Revisa GROK_MODEL={GROK_MODEL} en el panel del proveedor"]
+                base["siguiente_paso"] = "Corregir nombre del modelo en .env"
+                return base
+            _auth_failed = True
         base["error"] = "auth_or_bad_request"
         base["motivo_score"] = msg
-        base["riesgos"] = ["Error de API Grok"]
-        base["siguiente_paso"] = "Corregir API key / modelo y re-ejecutar"
+        base["riesgos"] = ["Error de API IA"]
+        base["siguiente_paso"] = "Corregir API key / base_url / modelo y re-ejecutar"
         return base
     except APIError as e:
-        logger.error("APIError Grok: %s", e)
+        logger.error("APIError IA: %s", e)
         base["error"] = "api_error"
         base["motivo_score"] = str(e)
         return base
     except Exception as e:
-        logger.exception("Error Grok inesperado: %s", e)
+        logger.exception("Error IA inesperado: %s", e)
         base["error"] = "unknown"
         base["motivo_score"] = str(e)
         return base
@@ -153,6 +173,5 @@ Si falta info de pliego completo, indica documentos típicos SECOP II (jurídico
     return base
 
 def reset_auth_flag():
-    """Llamar al inicio de cada run diario."""
     global _auth_failed
     _auth_failed = False
